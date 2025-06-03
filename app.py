@@ -1,7 +1,7 @@
-
 import streamlit as st
 import pandas as pd
 import re
+from io import BytesIO
 
 st.set_page_config(page_title="KOC Data Cleaner", layout="wide")
 st.title("🧹 Công cụ chuẩn hoá dữ liệu KOC")
@@ -37,6 +37,12 @@ def standardize_row(row):
 
     return row
 
+def convert_df_to_excel(df):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False)
+    return output.getvalue()
+
 if uploaded_file:
     if uploaded_file.name.endswith(".csv"):
         df = pd.read_csv(uploaded_file)
@@ -48,9 +54,11 @@ if uploaded_file:
     st.subheader("📊 Dữ liệu sau khi chuẩn hoá")
     st.dataframe(df_cleaned)
 
+    excel_data = convert_df_to_excel(df_cleaned)
+
     st.download_button(
         label="📥 Tải file kết quả (.xlsx)",
-        data=df_cleaned.to_excel(index=False, engine='openpyxl'),
+        data=excel_data,
         file_name="koc_cleaned_data.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
