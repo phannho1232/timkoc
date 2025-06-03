@@ -1,14 +1,11 @@
 import streamlit as st
 import pandas as pd
-import re
 from io import BytesIO
 
 st.set_page_config(page_title="KOC Data Cleaner", layout="wide")
 st.title("🧹 Công cụ chuẩn hoá dữ liệu KOC nâng cao")
 
 uploaded_file = st.file_uploader("Tải lên file dữ liệu (.csv hoặc .json)", type=["csv", "json"])
-
-# ----- Hàm xử lý -----
 
 def parse_money(value):
     if not isinstance(value, str):
@@ -50,38 +47,28 @@ def format_currency(value):
         pass
     return value
 
-def fix_gpm_totalorders(row):
-    if isinstance(row['gpm'], (int, float)) and row['gpm'] > 1000:
-        if not row.get('totalOrders'):
-            row['totalOrders'] = row['gpm']
-        row['gpm'] = None
-    if isinstance(row['totalOrders'], (int, float)) and row['totalOrders'] < 1000:
-        if not row.get('gpm'):
-            row['gpm'] = row['totalOrders']
-        row['totalOrders'] = None
-    return row
-
 def clean_koc_data(df):
     df = df.copy()
+
     for col in ['gmv', 'gpm', 'aov', 'totalOrders']:
         df[col] = df[col].apply(parse_money)
 
     df['followers'] = df['followers'].apply(parse_followers)
-    df = df.apply(fix_gpm_totalorders, axis=1)
 
-    for col in ['gmv', 'gpm', 'aov']:
+    # Đảo chỗ: gpm <-> totalOrders
+    df['gpm'], df['totalOrders'] = df['totalOrders'], df['gpm']
+
+    for col in ['gmv', 'aov', 'gpm']:
         df[col] = df[col].apply(format_currency)
 
     return df
 
-# ----- Excel xuất file -----
 def convert_df_to_excel(df):
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False)
     return output.getvalue()
 
-# ----- Giao diện xử lý -----
 if uploaded_file:
     if uploaded_file.name.endswith(".csv"):
         df = pd.read_csv(uploaded_file)
